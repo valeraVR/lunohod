@@ -92,11 +92,11 @@ export default function App() {
     setClosingConfirmation,
   } = useTelegram();
   const [phase, setPhase] = useState<Phase>("menu");
+  const [meta, setMeta] = useState<MetaState>(() => loadMeta());
   const [game, setGame] = useState<GameState>(() => createGame(meta.selectedTier));
   const [gameId, setGameId] = useState(0);
   const [scores, setScores] = useState<ScoreEntry[]>(() => loadScores());
   const [muted, setMuted] = useState<boolean>(() => readMuted());
-  const [meta, setMeta] = useState<MetaState>(() => loadMeta());
   const [showCharacters, setShowCharacters] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [rulesOrigin, setRulesOrigin] = useState<"menu" | "game">("menu");

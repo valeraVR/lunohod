@@ -54,7 +54,6 @@ export function CharacterSelect({ meta, onClose, onSelect, onBuy }: CharacterSel
             const owned = isOwned(meta, ch.id);
             const prog = meta.owned[ch.id];
             const isSelected = meta.selectedId === ch.id;
-            const maxTier = prog?.maxTier ?? 0;
 
             return (
               <div
