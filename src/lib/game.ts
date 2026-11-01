@@ -66,6 +66,9 @@ export interface LogEntry {
   tone: Tone;
 }
 
+import type { CharacterId } from "@/lib/characters";
+import { getCharacterMods } from "@/lib/characters";
+
 export interface GameState {
   player: number;
   shadow: number;
@@ -81,6 +84,7 @@ export interface GameState {
   log: LogEntry[];
   nudge: number;
   difficulty: DifficultyConfig;
+  characterId: CharacterId;
 }
 
 export type EventKind =
@@ -235,7 +239,7 @@ function freshTiles(): Tile[] {
   }));
 }
 
-export function createGame(tier: DifficultyTier = 1): GameState {
+export function createGame(tier: DifficultyTier = 1, characterId: CharacterId = "ash"): GameState {
   const difficulty = DIFFICULTY[tier] ?? DIFFICULTY[1];
   const tiles = freshTiles();
   const player = tileIndex(5, 1);
@@ -285,6 +289,7 @@ export function createGame(tier: DifficultyTier = 1): GameState {
     cause: null,
     nudge: 0,
     difficulty,
+    characterId,
     log: [
       { id: uid(), text: intro, tone: tier === 3 ? "danger" : "muted" },
       { id: uid(), text: "Твой первый осколок уже рядом.", tone: "jade" },
@@ -338,6 +343,7 @@ export function resolveMove(prev: GameState, dir: Direction): MoveResult {
     }
     return tile;
   });
+  const aliveCount = tiles.filter((t) => t.decay < 3).length;
   const oldPlayer = prev.player;
   if (oldPlayer !== target && tiles[oldPlayer].decay === 0) {
     tiles[oldPlayer] = { ...tiles[oldPlayer], decay: 1 };
@@ -346,7 +352,8 @@ export function resolveMove(prev: GameState, dir: Direction): MoveResult {
     if (tile.decay < 3 && tiles[i].decay >= 3) events.push({ kind: "void", tile: i });
   });
 
-  let score = prev.score + (prev.moves < 30 ? 10 : 2);
+  const mods = getCharacterMods(prev.characterId);
+  let score = prev.score + Math.round((prev.moves < 30 ? 5 : 1) * mods.scoreMult);
   let shards = [...prev.shards];
   let star = prev.star;
   let shardsCollected = prev.shardsCollected;
@@ -381,22 +388,25 @@ export function resolveMove(prev: GameState, dir: Direction): MoveResult {
     log = addLog(log, "Звёздный ключ! Тень изгнана.", "gold");
   }
 
-  if (collectedShard && !collectedStar) {
+  if (collectedShard && !collectedStar && aliveCount > 2) {
     skipShadow = true;
     log = addLog(log, "Блеск осколка ослепил Тень.", "jade");
+  } else if (collectedShard && !collectedStar && aliveCount <= 2) {
+    log = addLog(log, "Тень не ослепла — слишком мало места.", "muted");
   }
 
   const nextMoves = prev.moves + 1;
   const diff = prev.difficulty ?? DIFFICULTY[1];
   const nextSpeed = Math.min(
     diff.maxShadowSpeed,
-    diff.baseShadowSpeed +
+    Math.max(1, diff.baseShadowSpeed +
       Math.floor(nextMoves / diff.speedRampEvery) +
-      (shardsCollected >= diff.shardSpeedBoostAt ? 1 : 0)
+      (shardsCollected >= diff.shardSpeedBoostAt ? 1 : 0) +
+      mods.shadowSpeedDelta)
   );
 
-  // Grace period depends on difficulty tier.
-  const grace = prev.moves < diff.graceMoves;
+  // Grace period depends on difficulty tier. When only 2 tiles remain, the shadow keeps moving.
+  const grace = prev.moves < diff.graceMoves && aliveCount > 2;
 
   if (skipShadow) {
     if (collectedStar) {
@@ -423,8 +433,8 @@ export function resolveMove(prev: GameState, dir: Direction): MoveResult {
   }
 
   const marker = star;
-  // Keep three shards on the table.
-  while (status === "playing" && shards.length < SHARD_TARGET) {
+  // Keep three shards on the table. When only 2 tiles remain, do not spawn new shards.
+  while (status === "playing" && shards.length < SHARD_TARGET && aliveCount > 2) {
     const occupied = [...shards, ...(marker !== null ? [marker] : [])];
     const spot = pickSpawn(tiles, target, shadow, occupied, 2);
     if (spot === null) break;
@@ -438,7 +448,8 @@ export function resolveMove(prev: GameState, dir: Direction): MoveResult {
     collectedShard &&
     shardsCollected > 0 &&
     shardsCollected % 2 === 0 &&
-    star === null
+    star === null &&
+    aliveCount > 2
   ) {
     const spot = pickSpawn(tiles, target, shadow, [...shards], 3);
     if (spot !== null) {
@@ -483,6 +494,7 @@ export function resolveMove(prev: GameState, dir: Direction): MoveResult {
       moves: nextMoves,
       shadowSpeed: nextSpeed,
       difficulty: prev.difficulty ?? DIFFICULTY[1],
+      characterId: prev.characterId,
       status,
       cause,
       log,

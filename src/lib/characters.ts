@@ -12,6 +12,7 @@ export interface CharacterDef {
   rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
   price: number;
   blurb: string;
+  perk: string;
 }
 
 /** Самый редкий цвет — Бездна (чёрно-багровый). */
@@ -25,6 +26,7 @@ export const CHARACTERS: CharacterDef[] = [
     rarity: "common",
     price: 0,
     blurb: "Стартовый жетон. Спокойный и надёжный.",
+    perk: "Без бонусов — базовый опыт.",
   },
   {
     id: "moss",
@@ -33,8 +35,9 @@ export const CHARACTERS: CharacterDef[] = [
     color: "#3d9b78",
     glow: "rgba(61,155,120,0.5)",
     rarity: "common",
-    price: 150,
+    price: 250,
     blurb: "Оттенок лунной травы.",
+    perk: "+25% монет за осколки.",
   },
   {
     id: "azure",
@@ -43,8 +46,9 @@ export const CHARACTERS: CharacterDef[] = [
     color: "#4a8fd4",
     glow: "rgba(74,143,212,0.5)",
     rarity: "uncommon",
-    price: 350,
+    price: 600,
     blurb: "Холодный свет дальнего кратера.",
+    perk: "+10% к очкам за каждый шаг.",
   },
   {
     id: "amethyst",
@@ -53,8 +57,9 @@ export const CHARACTERS: CharacterDef[] = [
     color: "#9b6ddb",
     glow: "rgba(155,109,219,0.55)",
     rarity: "rare",
-    price: 700,
+    price: 1200,
     blurb: "Редкий отблеск ночного кристалла.",
+    perk: "Тень на 1 шаг медленнее.",
   },
   {
     id: "solar",
@@ -63,8 +68,9 @@ export const CHARACTERS: CharacterDef[] = [
     color: "#e8c46a",
     glow: "rgba(232,196,106,0.55)",
     rarity: "epic",
-    price: 1200,
+    price: 2000,
     blurb: "Тёплый металл солнечной пыли.",
+    perk: "+20% к очкам за каждый шаг.",
   },
   {
     id: "abyss",
@@ -73,8 +79,9 @@ export const CHARACTERS: CharacterDef[] = [
     color: "#8b1e3a",
     glow: "rgba(139,30,58,0.65)",
     rarity: "legendary",
-    price: 2500,
+    price: 4000,
     blurb: "Самый редкий цвет. Тьма с кромкой крови.",
+    perk: "Тень на 1 шаг быстрее, +50% монет за звёзды.",
   },
 ];
 
@@ -148,6 +155,35 @@ export function getCharacter(id: CharacterId): CharacterDef {
   return CHARACTERS.find((c) => c.id === id) ?? CHARACTERS[0];
 }
 
+/** Геймплейные модификаторы персонажа */
+export interface CharacterMods {
+  /** множитель очков за шаг/сбор */
+  scoreMult: number;
+  /** дельта к скорости тени (может быть отрицательной) */
+  shadowSpeedDelta: number;
+  /** бонус к монетам за осколки (множитель) */
+  shardCoinMult: number;
+  /** бонус к монетам за звёзды (множитель) */
+  starCoinMult: number;
+}
+
+export function getCharacterMods(id: CharacterId): CharacterMods {
+  switch (id) {
+    case "moss":
+      return { scoreMult: 1.0, shadowSpeedDelta: 0, shardCoinMult: 1.25, starCoinMult: 1.0 };
+    case "azure":
+      return { scoreMult: 1.1, shadowSpeedDelta: 0, shardCoinMult: 1.0, starCoinMult: 1.0 };
+    case "amethyst":
+      return { scoreMult: 1.0, shadowSpeedDelta: -1, shardCoinMult: 1.0, starCoinMult: 1.0 };
+    case "solar":
+      return { scoreMult: 1.2, shadowSpeedDelta: 0, shardCoinMult: 1.0, starCoinMult: 1.0 };
+    case "abyss":
+      return { scoreMult: 1.0, shadowSpeedDelta: 1, shardCoinMult: 1.0, starCoinMult: 1.5 };
+    default:
+      return { scoreMult: 1.0, shadowSpeedDelta: 0, shardCoinMult: 1.0, starCoinMult: 1.0 };
+  }
+}
+
 export function isOwned(meta: MetaState, id: CharacterId): boolean {
   return Boolean(meta.owned[id]);
 }
@@ -159,11 +195,17 @@ export function canSelectTier(meta: MetaState, id: CharacterId, tier: CharacterT
 }
 
 /** Coins earned at end of a run */
-export function calcRunCoins(score: number, shards: number, starsApprox: number): number {
-  const fromScore = Math.floor(score / 25);
-  const fromShards = shards * 8;
-  const fromStars = starsApprox * 20;
-  return Math.max(5, fromScore + fromShards + fromStars);
+export function calcRunCoins(
+  score: number,
+  shards: number,
+  starsApprox: number,
+  mods?: CharacterMods
+): number {
+  const m = mods ?? { scoreMult: 1, shadowSpeedDelta: 0, shardCoinMult: 1, starCoinMult: 1 };
+  const fromScore = Math.floor((score / 60) * m.scoreMult);
+  const fromShards = Math.round(shards * 3 * m.shardCoinMult);
+  const fromStars = Math.round(starsApprox * 10 * m.starCoinMult);
+  return Math.max(3, fromScore + fromShards + fromStars);
 }
 
 export function tierCompleteBonus(tier: CharacterTier): number {

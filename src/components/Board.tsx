@@ -31,6 +31,7 @@ interface BoardProps {
   game: GameState;
   interactive: boolean;
   onMove: (dir: Direction) => void;
+  playerColor?: string;
 }
 
 interface FloatItem {
@@ -121,7 +122,7 @@ function directionBetween(from: number, to: number): Direction | null {
 }
 
 export const Board = forwardRef<BoardHandle, BoardProps>(function Board(
-  { game, interactive, onMove },
+  { game, interactive, onMove, playerColor },
   ref
 ) {
   const frameRef = useRef<HTMLDivElement>(null);
@@ -340,8 +341,13 @@ export const Board = forwardRef<BoardHandle, BoardProps>(function Board(
             </div>
           </div>
           <div className="token-slot" style={slotStyle(game.player)}>
-            <div key={game.moves} className="moon-token token-pop" aria-label="Твой лунный жетон">
-              <IconCrescent className="text-[#3a2810]" />
+            <div
+              key={game.moves}
+              className="moon-token token-pop"
+              aria-label="Твой лунный жетон"
+              style={{ color: playerColor ?? "#3a2810", filter: `drop-shadow(0 0 6px ${playerColor ?? "#3a2810"})` }}
+            >
+              <IconCrescent className="h-full w-full" />
             </div>
           </div>
         </div>

@@ -46,6 +46,7 @@ import {
   getCharacter,
   isOwned,
   calcRunCoins,
+  getCharacterMods,
   tierCompleteBonus,
   type MetaState,
   type CharacterId,
@@ -93,7 +94,7 @@ export default function App() {
   } = useTelegram();
   const [phase, setPhase] = useState<Phase>("menu");
   const [meta, setMeta] = useState<MetaState>(() => loadMeta());
-  const [game, setGame] = useState<GameState>(() => createGame(meta.selectedTier));
+  const [game, setGame] = useState<GameState>(() => createGame(meta.selectedTier, meta.selectedId));
   const [gameId, setGameId] = useState(0);
   const [scores, setScores] = useState<ScoreEntry[]>(() => loadScores());
   const [muted, setMuted] = useState<boolean>(() => readMuted());
@@ -432,7 +433,8 @@ export default function App() {
         // Монеты за партию + прогресс персонажа
         setMeta((prev) => {
           const starsApprox = Math.floor(state.shardsCollected / 2);
-          let gained = calcRunCoins(state.score, state.shardsCollected, starsApprox);
+          const mods = getCharacterMods(meta.selectedId);
+          let gained = calcRunCoins(state.score, state.shardsCollected, starsApprox, mods);
           const owned = { ...prev.owned };
           const id = prev.selectedId;
           const tier = prev.selectedTier;
@@ -647,6 +649,7 @@ export default function App() {
                   game={game}
                   interactive={phase === "playing" && !showRules}
                   onMove={tryMove}
+                  playerColor={getCharacter(meta.selectedId).color}
                 />
               </div>
 

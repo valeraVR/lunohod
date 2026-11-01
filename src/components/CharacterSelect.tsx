@@ -97,6 +97,7 @@ export function CharacterSelect({ meta, onClose, onSelect, onBuy }: CharacterSel
                       </span>
                     </div>
                     <p className="mt-1 text-[0.72rem] text-cream/40">{ch.blurb}</p>
+                    <p className="mt-0.5 text-[0.68rem] font-semibold text-gold/70">⚡ {ch.perk}</p>
                   </div>
 
                   {!owned ? (
